@@ -1,7 +1,8 @@
 import { config } from './config.js';
 import { isConfigured } from './core/settings.js';
+import { startAutoUpdateLoop } from './core/updater.js';
 import { startWebServer } from './web/server.js';
-import { startWhatsApp } from './whatsapp/bot.js';
+import { initWhatsApp } from './whatsapp/bot.js';
 
 if (!isConfigured()) {
   console.warn(
@@ -11,6 +12,7 @@ if (!isConfigured()) {
 }
 
 startWebServer();
-startWhatsApp().catch((err) => {
-  console.error('Failed to start WhatsApp connection:', err);
+initWhatsApp().catch((err) => {
+  console.error('Failed to resume WhatsApp connection:', err);
 });
+startAutoUpdateLoop();

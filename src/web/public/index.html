@@ -9,10 +9,13 @@
 <body>
 <header>
   <h1>Androg</h1>
-  <p>Paste code or just chat. It'll be saved, and if it's code, installed/run/explained automatically.</p>
+  <nav id="tabs" hidden>
+    <button data-tab="chat" class="tab-btn active">Chat</button>
+    <button data-tab="practice" class="tab-btn">Practice</button>
+    <button data-tab="dashboard" class="tab-btn">Dashboard</button>
+    <button data-tab="whatsapp" class="tab-btn">WhatsApp</button>
+  </nav>
 </header>
-
-<main id="chat" hidden></main>
 
 <section id="setup" hidden>
   <h2>One-time setup</h2>
@@ -29,10 +32,109 @@
   <p id="setup-error" class="error" hidden></p>
 </section>
 
-<form id="composer" hidden>
-  <textarea id="input" placeholder="Type a message or paste code (``` fences optional)…" rows="3"></textarea>
-  <button type="submit">Send</button>
-</form>
+<div id="app" hidden>
+
+  <div id="tab-chat" class="tab-panel">
+    <aside id="chat-sidebar">
+      <button id="new-chat-btn">+ New chat</button>
+      <div id="chat-list"></div>
+    </aside>
+    <div id="chat-main">
+      <main id="chat"></main>
+      <form id="composer">
+        <textarea id="input" placeholder="Type a message or paste code (``` fences optional)…" rows="3"></textarea>
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="tab-practice" class="tab-panel" hidden>
+    <div class="panel-inner">
+      <div id="practice-idle">
+        <h2>Practice mode</h2>
+        <p class="muted">I'll write you a live coding challenge based on what you've actually run before, you write the code, I grade it.</p>
+        <button id="practice-start-btn">Start a challenge</button>
+      </div>
+      <div id="practice-active" hidden>
+        <h3 id="practice-title"></h3>
+        <p id="practice-prompt" class="muted"></p>
+        <textarea id="practice-code" rows="10" spellcheck="false"></textarea>
+        <button id="practice-submit-btn">Run &amp; grade</button>
+      </div>
+      <div id="practice-result" hidden>
+        <pre id="practice-output" class="output-block"></pre>
+        <p id="practice-feedback"></p>
+        <button id="practice-again-btn">New challenge</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-dashboard" class="tab-panel" hidden>
+    <div class="panel-inner">
+      <h2>Dashboard</h2>
+      <div id="dashboard-tiles" class="tiles"></div>
+      <div class="chart-block">
+        <h3>Languages run</h3>
+        <div id="lang-chart" class="bar-chart"></div>
+      </div>
+      <div class="chart-block">
+        <h3>Activity, last 14 days</h3>
+        <div id="activity-chart" class="bar-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-whatsapp" class="tab-panel" hidden>
+    <div class="panel-inner">
+      <h2>WhatsApp</h2>
+      <div id="wa-status" class="muted"></div>
+
+      <div id="wa-pairing">
+        <div id="wa-pair-tabs">
+          <button data-method="qr" class="tab-btn active">Scan QR</button>
+          <button data-method="pairing" class="tab-btn">Enter phone number</button>
+        </div>
+        <div id="wa-qr-panel">
+          <p class="muted">Open WhatsApp → Linked Devices → Link a device, then scan:</p>
+          <img id="wa-qr-img" alt="WhatsApp QR code" />
+        </div>
+        <div id="wa-code-panel" hidden>
+          <p class="muted">Country code + number, digits only (e.g. 15551234567):</p>
+          <div class="row">
+            <input id="wa-phone" placeholder="15551234567" autocomplete="off" />
+            <button id="wa-request-code-btn">Get code</button>
+          </div>
+          <p id="wa-pairing-code" class="pairing-code"></p>
+          <p class="muted">Enter this in WhatsApp → Linked Devices → Link with phone number instead.</p>
+        </div>
+      </div>
+
+      <div id="wa-connected" hidden>
+        <p>Connected as <strong id="wa-phone-display"></strong></p>
+        <button id="wa-logout-btn">Log out</button>
+
+        <h3>Mode</h3>
+        <label class="radio-row">
+          <input type="radio" name="wa-mode" value="self" />
+          <span><strong>Self</strong> — only replies when you message <em>yourself</em> (Message Yourself). Never talks to your real contacts. (default)</span>
+        </label>
+        <label class="radio-row">
+          <input type="radio" name="wa-mode" value="dedicated" />
+          <span><strong>Dedicated</strong> — this number exists just to be the bot; it replies to anyone who messages it directly.</span>
+        </label>
+
+        <h3>Groups (off by default, strictly opt-in)</h3>
+        <p class="muted">The bot never replies in a group until you add its JID here. If it sees a message in an unlisted group, it logs the JID to the terminal so you can copy it.</p>
+        <div class="row">
+          <input id="wa-group-jid" placeholder="123456789-987654321@g.us" autocomplete="off" />
+          <button id="wa-group-add-btn">Allow</button>
+        </div>
+        <ul id="wa-group-list"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <script src="chat.js"></script>
 </body>

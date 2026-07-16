@@ -1,5 +1,5 @@
 import { detectCode } from './codeDetect.js';
-import { getSession, pushHistory, setLastLanguage, saveSnippet } from './storage.js';
+import { getSession, pushHistory, setLastLanguage, saveSnippet, recordMessage, recordSnippetRun, recordCharsDelivered } from './storage.js';
 import { isConfigured } from './settings.js';
 import { isRuntimeAvailable } from '../exec/envCheck.js';
 import { ensureRuntime } from '../exec/installer.js';
@@ -53,6 +53,7 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
     ];
   }
 
+  recordMessage();
   pushHistory(sessionId, 'user', text);
   const messages = [];
 
@@ -61,6 +62,7 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
   if (!detection.isCode) {
     const reply = await chatReply(sessionId);
     pushHistory(sessionId, 'assistant', reply);
+    recordCharsDelivered(reply.length);
     return [reply];
   }
 
@@ -70,6 +72,7 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
       'Try telling me the language (e.g. put ```python at the top of the block).';
     saveSnippet({ sessionId, language: 'unknown', code: detection.code, channel });
     pushHistory(sessionId, 'assistant', reply);
+    recordCharsDelivered(reply.length);
     return [reply];
   }
 
@@ -85,7 +88,9 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
     if (!ensure.installed) {
       const failMsg = `❌ Couldn't install ${language} automatically: ${ensure.error}`;
       messages.push(failMsg);
-      pushHistory(sessionId, 'assistant', messages.join('\n\n'));
+      const combinedFail = messages.join('\n\n');
+      pushHistory(sessionId, 'assistant', combinedFail);
+      recordCharsDelivered(combinedFail.length);
       return messages;
     }
     messages.push(`✅ Installed ${language}${ensure.pkg ? ` (package: ${ensure.pkg})` : ''}.`);
@@ -93,6 +98,7 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
 
   messages.push(`▶️ Running your ${language} code...`);
   const result = await runCode(sessionId, language, code);
+  recordSnippetRun(language, result.exitCode === 0 && !result.timedOut);
   messages.push(formatOutput(result));
 
   try {
@@ -116,6 +122,8 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
     // AI explanation is best-effort; the raw output above already answers the request.
   }
 
-  pushHistory(sessionId, 'assistant', messages.join('\n\n'));
+  const combined = messages.join('\n\n');
+  pushHistory(sessionId, 'assistant', combined);
+  recordCharsDelivered(combined.length);
   return messages;
 }
