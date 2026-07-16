@@ -12,11 +12,13 @@
   <div class="setup-card">
     <div class="brand-mark">⚡</div>
     <h1>Welcome to Androg</h1>
-    <p class="muted">
-      One free key and you're set. Grab one at
-      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>
-      — no card required.
-    </p>
+    <p class="muted">One free key and you're set — here's how to get it:</p>
+    <ol class="steps">
+      <li>Open <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a> and sign up (free, no card needed)</li>
+      <li>Click <strong>Create Key</strong>, give it any name</li>
+      <li>Copy the key — it starts with <code>sk-or-v1-</code></li>
+      <li>Paste it below</li>
+    </ol>
     <form id="setup-form">
       <input id="setup-key" type="password" placeholder="sk-or-v1-…" autocomplete="off" />
       <button type="submit">Save key</button>
@@ -37,6 +39,7 @@
       <a href="#practice" class="nav-link" data-page="practice"><span class="nav-icon">🧠</span><span class="nav-label">Practice</span></a>
       <a href="#dashboard" class="nav-link" data-page="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
       <a href="#whatsapp" class="nav-link" data-page="whatsapp"><span class="nav-icon">🟢</span><span class="nav-label">WhatsApp</span></a>
+      <a href="#help" class="nav-link" data-page="help"><span class="nav-icon">📘</span><span class="nav-label">Help</span></a>
     </div>
   </nav>
 
@@ -146,13 +149,17 @@
             <div class="qr-frame"><img id="wa-qr-img" alt="WhatsApp QR code" /></div>
           </div>
           <div id="wa-code-panel" hidden>
-            <p class="muted">Country code + number, digits only:</p>
+            <p class="muted">Country code + number, digits only — no <code>+</code>, spaces, or dashes.</p>
+            <p class="example">Example: <strong>15551234567</strong> for a US number +1 (555) 123-4567</p>
             <div class="row">
-              <input id="wa-phone" placeholder="15551234567" autocomplete="off" />
+              <input id="wa-phone" placeholder="15551234567" autocomplete="off" inputmode="numeric" />
               <button id="wa-request-code-btn">Get code</button>
             </div>
             <p id="wa-pairing-code" class="pairing-code"></p>
-            <p class="muted">Enter it under WhatsApp → Linked Devices → Link with phone number.</p>
+            <p class="muted" id="wa-code-help" hidden>
+              Enter this in WhatsApp → Linked Devices → Link with phone number — <strong>now</strong>,
+              it expires in under a minute. If it's gone stale, just hit "Get code" again for a fresh one.
+            </p>
           </div>
         </div>
 
@@ -186,6 +193,66 @@
             <button id="wa-group-add-btn">Allow</button>
           </div>
           <ul id="wa-group-list"></ul>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============ HELP ============ -->
+    <section id="page-help" class="page">
+      <header class="page-header">
+        <div>
+          <h1>Help</h1>
+          <p class="muted">Getting a key, and linking WhatsApp two ways.</p>
+        </div>
+      </header>
+      <div class="page-body">
+
+        <div class="card">
+          <span class="badge badge-accent">Setup</span>
+          <h2>Getting an OpenRouter key</h2>
+          <ol class="steps">
+            <li>Open <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a> and sign up — it's free, no card required for free models</li>
+            <li>Click <strong>Create Key</strong>, name it anything (e.g. "androg")</li>
+            <li>Copy the key shown — starts with <code>sk-or-v1-</code>, and OpenRouter only shows it once</li>
+            <li>Paste it into Androg's setup screen (or the Chat page will prompt you if it's missing)</li>
+          </ol>
+          <p class="muted">Free models are rate-limited (20 req/min, 50/day under $10 balance) — Androg automatically rotates across whichever free models are currently available, so a single model being busy won't stop you.</p>
+        </div>
+
+        <div class="card">
+          <span class="badge badge-accent">WhatsApp</span>
+          <h2>Pairing by QR code</h2>
+          <ol class="steps">
+            <li>Open the <strong>WhatsApp</strong> tab — it starts trying to connect automatically and shows a QR code</li>
+            <li>On your phone: WhatsApp → <strong>Settings → Linked Devices → Link a device</strong></li>
+            <li>Scan the code on screen with your phone's camera inside that flow</li>
+          </ol>
+          <p class="muted">QR codes refresh themselves every so often if you don't scan in time — just wait for the next one, no need to click anything.</p>
+        </div>
+
+        <div class="card">
+          <span class="badge badge-accent">WhatsApp</span>
+          <h2>Pairing by phone number</h2>
+          <ol class="steps">
+            <li>On the WhatsApp tab, switch to <strong>Phone number</strong></li>
+            <li>Type your number as country code + number, digits only — e.g. <strong>15551234567</strong> for +1 (555) 123-4567, no <code>+</code>/spaces/dashes</li>
+            <li>Tap <strong>Get code</strong> — an 8-character code appears almost immediately</li>
+            <li>On your phone: WhatsApp → <strong>Settings → Linked Devices → Link with phone number instead</strong>, then type the code in <strong>right away</strong> — it expires in under a minute</li>
+            <li>If it expires before you finish, just tap <strong>Get code</strong> again for a fresh one</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <span class="badge">Good to know</span>
+          <h2>Self vs. dedicated mode</h2>
+          <p class="muted">
+            <strong>Self mode</strong> (default) links your own everyday WhatsApp number, but the bot only ever
+            replies inside your own "Message Yourself" chat — it never jumps into conversations with your real
+            contacts. <strong>Dedicated mode</strong> is for a number that exists purely to be the bot, replying
+            to anyone who messages it. Groups are always off until you explicitly add one's JID in the WhatsApp
+            tab. Switch modes any time from there.
+          </p>
         </div>
 
       </div>

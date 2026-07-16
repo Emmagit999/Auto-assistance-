@@ -78,7 +78,7 @@ setupForm.addEventListener('submit', async (e) => {
 
 // ============================== ROUTER ==============================
 
-const PAGES = ['chat', 'practice', 'dashboard', 'whatsapp'];
+const PAGES = ['chat', 'practice', 'dashboard', 'whatsapp', 'help'];
 
 function navigateTo(page) {
   if (!PAGES.includes(page)) page = 'chat';
@@ -363,19 +363,34 @@ document.querySelectorAll('#wa-pair-tabs .segmented-btn').forEach((btn) => {
   });
 });
 
-document.getElementById('wa-request-code-btn').addEventListener('click', () => {
-  const phoneNumber = document.getElementById('wa-phone').value.trim();
-  if (!phoneNumber) return;
-  connectWhatsApp('pairing', phoneNumber);
+const waRequestCodeBtn = document.getElementById('wa-request-code-btn');
+waRequestCodeBtn.addEventListener('click', async () => {
+  const raw = document.getElementById('wa-phone').value.trim();
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (digits.length < 8 || digits.length > 15) {
+    waStatusDot.className = 'status-dot error';
+    waStatusEl.textContent = 'That phone number looks off — country code + number, digits only, e.g. 15551234567.';
+    return;
+  }
+  waRequestCodeBtn.disabled = true;
+  waRequestCodeBtn.textContent = 'Requesting…';
+  waStatusDot.className = 'status-dot';
+  waStatusEl.textContent = 'Requesting a pairing code…';
+  await connectWhatsApp('pairing', digits);
+  waRequestCodeBtn.disabled = false;
+  waRequestCodeBtn.textContent = 'Get code';
 });
 
 async function connectWhatsApp(method, phoneNumber) {
-  await fetch('/api/whatsapp/connect', {
+  // /api/whatsapp/connect only resolves once the state has actually moved past
+  // "connecting" (QR/code ready, or failed) — so its response is already fresh and
+  // rendering it directly means the very first display is never stale/expired.
+  const res = await fetch('/api/whatsapp/connect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ method, phoneNumber }),
   });
-  renderWhatsAppStatus();
+  applyWhatsAppStatus(await res.json());
 }
 
 document.getElementById('wa-logout-btn').addEventListener('click', async () => {
@@ -432,11 +447,14 @@ async function renderWhatsAppSettings() {
 }
 
 let waPollTimer = null;
+const WA_POLL_MS = 1200; // fast: a pairing code is only valid briefly, don't sit on a stale one
 
 async function renderWhatsAppStatus() {
   const res = await fetch('/api/whatsapp/status');
-  const status = await res.json();
+  applyWhatsAppStatus(await res.json());
+}
 
+function applyWhatsAppStatus(status) {
   if (status.state === 'connected') {
     waStatusDot.className = 'status-dot live';
     waStatusEl.textContent = 'Connected';
@@ -455,6 +473,7 @@ async function renderWhatsAppStatus() {
   waModeCard.hidden = true;
   waGroupsCard.hidden = true;
   waPairing.hidden = false;
+  document.getElementById('wa-code-help').hidden = true;
 
   if (status.state === 'qr_pending' && status.qrDataUrl) {
     waStatusDot.className = 'status-dot';
@@ -462,8 +481,9 @@ async function renderWhatsAppStatus() {
     document.getElementById('wa-qr-img').src = status.qrDataUrl;
   } else if (status.state === 'pairing_code_pending' && status.pairingCode) {
     waStatusDot.className = 'status-dot';
-    waStatusEl.textContent = 'Enter this code in WhatsApp.';
+    waStatusEl.textContent = 'Enter this code in WhatsApp — now, before it expires.';
     document.getElementById('wa-pairing-code').textContent = status.pairingCode;
+    document.getElementById('wa-code-help').hidden = false;
   } else if (status.state === 'connecting') {
     waStatusDot.className = 'status-dot';
     waStatusEl.textContent = 'Connecting…';
@@ -475,7 +495,7 @@ async function renderWhatsAppStatus() {
     waStatusEl.textContent = 'Not connected. Pick a pairing method below.';
   }
 
-  if (!waPollTimer) waPollTimer = setInterval(renderWhatsAppStatus, 2500);
+  if (!waPollTimer) waPollTimer = setInterval(renderWhatsAppStatus, WA_POLL_MS);
 }
 
 async function loadWhatsApp() {

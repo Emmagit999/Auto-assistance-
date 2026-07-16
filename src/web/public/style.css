@@ -229,6 +229,18 @@ input:focus, textarea:focus {
 }
 .badge-accent { background: var(--accent-soft); color: var(--accent); }
 
+.steps {
+  text-align: left;
+  margin: 16px 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.steps li { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+.steps li strong { color: var(--text); }
+.steps li::marker { color: var(--accent); font-weight: 600; }
+
 /* ============ chat page ============ */
 
 #page-chat { flex-direction: row; position: relative; overflow: hidden; }
@@ -415,6 +427,24 @@ input:focus, textarea:focus {
 
 .row { display: flex; gap: 8px; margin: 10px 0; }
 .row input { flex: 1; }
+
+.example {
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin: 6px 0 0;
+}
+.example strong { color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  background: var(--surface);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
 
 .connected-row { display: flex; align-items: center; justify-content: space-between; }
 .phone-display { font-size: 1.1rem; font-weight: 600; margin-top: 2px; }

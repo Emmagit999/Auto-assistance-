@@ -1,4 +1,4 @@
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +22,8 @@ function extractText(msg) {
   return m.conversation || m.extendedTextMessage?.text || m.imageMessage?.caption || m.videoMessage?.caption || null;
 }
 
+const READY_TIMEOUT_MS = 15_000;
+
 class WhatsAppManager extends EventEmitter {
   constructor() {
     super();
@@ -31,7 +33,7 @@ class WhatsAppManager extends EventEmitter {
     this.pairingCode = null;
     this.phoneNumber = null;
     this.lastError = null;
-    this._starting = false;
+    this._generation = 0; // bumped on every start(); stale sockets check this and go quiet
     this._loggedUnlistedGroups = new Set();
   }
 
@@ -59,28 +61,68 @@ class WhatsAppManager extends EventEmitter {
     this.emit('update', this.status());
   }
 
+  /** Resolves as soon as the state leaves 'connecting' (QR/code ready, connected, or
+   * failed) instead of on a fixed delay — so callers get the freshest possible status
+   * and a pairing code is never stale by the time it's shown. */
+  _waitUntilReady() {
+    return new Promise((resolve) => {
+      const onUpdate = (status) => {
+        if (status.state !== 'connecting') {
+          this.off('update', onUpdate);
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+      const timer = setTimeout(() => {
+        this.off('update', onUpdate);
+        resolve();
+      }, READY_TIMEOUT_MS);
+      this.on('update', onUpdate);
+    });
+  }
+
   /** method: 'auto' (silent resume, only if a session is already saved) | 'qr' | 'pairing' (needs phoneNumber) */
   async start({ method = 'auto', phoneNumber } = {}) {
-    if (this._starting) return this.status();
     if (method === 'auto' && !this.hasExistingSession()) return this.status();
-    this._starting = true;
+
+    // A new start() always supersedes whatever's in flight — switching from "scan QR"
+    // to "phone number" (or just retrying) tears down the old attempt instead of being
+    // silently ignored, which is what made the phone-number tab look broken: the QR
+    // flow auto-starts when this page opens, and a naive "already starting" guard would
+    // just no-op the pairing-code request underneath it.
+    const myGen = ++this._generation;
+    if (this.sock) {
+      try {
+        this.sock.end(undefined);
+      } catch {
+        // already dead, fine
+      }
+      this.sock = null;
+    }
     this.lastError = null;
     this.setState('connecting', { qrDataUrl: null, pairingCode: null });
+    const ready = this._waitUntilReady();
 
     try {
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
       const { version } = await fetchLatestBaileysVersion();
+      if (myGen !== this._generation) return this.status(); // superseded while awaiting setup
+
       const sock = makeWASocket({
         version,
         auth: state,
+        // WhatsApp's servers are known to reject the phone-number pairing-code flow for
+        // sockets presenting a non-standard browser fingerprint (QR-only is more lenient).
+        // Browsers.ubuntu keeps a recognized OS token while still branding the client name.
+        browser: Browsers.ubuntu('Androg'),
         logger: pino({ level: 'silent' }),
-        browser: ['Androg', 'Chrome', '1.0.0'],
       });
       this.sock = sock;
       sock.ev.on('creds.update', saveCreds);
       let pairingRequested = false;
 
       sock.ev.on('connection.update', async (update) => {
+        if (myGen !== this._generation) return; // stale socket from a superseded attempt
         const { connection, lastDisconnect, qr } = update;
 
         // The socket only accepts requestPairingCode() once it's reached this point in
@@ -91,9 +133,10 @@ class WhatsAppManager extends EventEmitter {
           pairingRequested = true;
           try {
             const code = await sock.requestPairingCode(phoneNumber.replace(/[^0-9]/g, ''));
+            if (myGen !== this._generation) return;
             this.setState('pairing_code_pending', { pairingCode: code });
           } catch (err) {
-            this._starting = false;
+            if (myGen !== this._generation) return;
             this.lastError = `Couldn't request a pairing code: ${err.message}`;
             this.setState('disconnected');
           }
@@ -101,16 +144,15 @@ class WhatsAppManager extends EventEmitter {
           console.log('\nScan this QR code with WhatsApp (Linked Devices):\n');
           qrcodeTerminal.generate(qr, { small: true });
           const qrDataUrl = await QRCode.toDataURL(qr).catch(() => null);
+          if (myGen !== this._generation) return;
           this.setState('qr_pending', { qrDataUrl });
         }
 
         if (connection === 'open') {
-          this._starting = false;
           const me = sock.user?.id ? normalizeJid(sock.user.id).split('@')[0] : null;
           this.setState('connected', { qrDataUrl: null, pairingCode: null, phoneNumber: me });
           console.log('WhatsApp connected.');
         } else if (connection === 'close') {
-          this._starting = false;
           const statusCode = lastDisconnect?.error?.output?.statusCode;
           const loggedOut = statusCode === DisconnectReason.loggedOut;
           this.setState('disconnected', { phoneNumber: null });
@@ -120,6 +162,7 @@ class WhatsAppManager extends EventEmitter {
       });
 
       sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (myGen !== this._generation) return;
         if (type !== 'notify') return;
         const ownJid = sock.user?.id ? normalizeJid(sock.user.id) : null;
 
@@ -171,15 +214,18 @@ class WhatsAppManager extends EventEmitter {
         }
       });
     } catch (err) {
-      this._starting = false;
-      this.lastError = err.message;
-      this.setState('disconnected');
+      if (myGen === this._generation) {
+        this.lastError = err.message;
+        this.setState('disconnected');
+      }
     }
 
+    await ready;
     return this.status();
   }
 
   async logout() {
+    this._generation++; // invalidate any in-flight attempt too
     if (this.sock) await this.sock.logout().catch(() => {});
     fs.rmSync(AUTH_DIR, { recursive: true, force: true });
     fs.mkdirSync(AUTH_DIR, { recursive: true });
