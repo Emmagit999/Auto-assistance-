@@ -1,0 +1,21 @@
+{
+  "name": "androg",
+  "version": "0.1.0",
+  "description": "Termux code assistant: chat over WhatsApp or a local web UI, auto-detect and run code, install missing runtimes, explain results via free OpenRouter models.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pino": "^9.3.2",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

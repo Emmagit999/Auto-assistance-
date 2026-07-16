@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Androg — Termux Code Assistant</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <h1>Androg</h1>
+  <p>Paste code or just chat. It'll be saved, and if it's code, installed/run/explained automatically.</p>
+</header>
+
+<main id="chat" hidden></main>
+
+<section id="setup" hidden>
+  <h2>One-time setup</h2>
+  <p>
+    Androg needs a free OpenRouter API key to power its AI features (chat, code detection,
+    explanations). Get one at
+    <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>
+    — no card required for free models.
+  </p>
+  <form id="setup-form">
+    <input id="setup-key" type="password" placeholder="sk-or-v1-…" autocomplete="off" />
+    <button type="submit">Save key</button>
+  </form>
+  <p id="setup-error" class="error" hidden></p>
+</section>
+
+<form id="composer" hidden>
+  <textarea id="input" placeholder="Type a message or paste code (``` fences optional)…" rows="3"></textarea>
+  <button type="submit">Send</button>
+</form>
+
+<script src="chat.js"></script>
+</body>
+</html>
