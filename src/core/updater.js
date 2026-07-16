@@ -7,7 +7,7 @@ const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..'); // src/core -> project root
 
-const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const CHECK_INTERVAL_MS = 60 * 1000;
 
 function run(cmd) {
   return execAsync(cmd, { cwd: ROOT });
@@ -56,15 +56,17 @@ async function checkAndApply() {
   }
 }
 
-/** Polls the git remote every 5 minutes; pulls, reinstalls if needed, and restarts
- * itself in place when a new commit lands. No-ops if this isn't a git checkout. */
+/** Checks once immediately on every launch, then polls the git remote every minute;
+ * pulls, reinstalls if needed, and restarts itself in place when a new commit lands.
+ * No-ops if this isn't a git checkout. */
 export function startAutoUpdateLoop() {
   isGitRepo().then((yes) => {
     if (!yes) {
       console.log('Auto-update disabled: not running from a git checkout.');
       return;
     }
-    console.log('🔄 Auto-update: checking for new versions every 5 minutes.');
+    console.log('🔄 Auto-update: checking for new versions now, then every minute.');
+    checkAndApply();
     setInterval(checkAndApply, CHECK_INTERVAL_MS);
   });
 }

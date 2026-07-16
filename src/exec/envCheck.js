@@ -9,17 +9,24 @@ function tryRun(cmd, args) {
   });
 }
 
+// Checks PATH directly via the shell's `command -v` builtin rather than invoking each
+// interpreter with a guessed "--version"-style flag — flag conventions vary wildly across
+// ~30 languages (some want -v, some -version, some none at all) and a wrong guess would
+// falsely report an installed runtime as missing. `command -v` only needs the binary name.
+function isOnPath(bin) {
+  return tryRun('sh', ['-c', `command -v ${bin}`]);
+}
+
 export async function isRuntimeAvailable(language) {
   const def = LANGUAGES[language];
   if (!def) return false;
-  const [cmd, args] = def.checkCmd;
-  return tryRun(cmd, args);
+  return isOnPath(def.bin);
 }
 
 /** Which package-manager binary this box uses: Termux's `pkg`, or plain `apt-get` elsewhere. */
 export async function detectPackageManager() {
-  if (await tryRun('pkg', ['--version'])) return 'pkg';
-  if (await tryRun('apt-get', ['--version'])) return 'apt-get';
-  if (await tryRun('apt', ['--version'])) return 'apt';
+  if (await isOnPath('pkg')) return 'pkg';
+  if (await isOnPath('apt-get')) return 'apt-get';
+  if (await isOnPath('apt')) return 'apt';
   return null;
 }
