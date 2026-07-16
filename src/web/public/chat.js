@@ -11,22 +11,19 @@ const clientId = getOrCreate('androg-client-id');
 let currentChatId = localStorage.getItem('androg-current-chat-id') || null;
 
 // --- setup gate ---
-const setupSection = document.getElementById('setup');
-const appEl = document.getElementById('app');
-const tabsNav = document.getElementById('tabs');
+const setupPage = document.getElementById('setup-page');
+const shellEl = document.getElementById('shell');
 const setupForm = document.getElementById('setup-form');
 const setupKey = document.getElementById('setup-key');
 const setupError = document.getElementById('setup-error');
 
 function showApp() {
-  setupSection.hidden = true;
-  appEl.hidden = false;
-  tabsNav.hidden = false;
+  setupPage.hidden = true;
+  shellEl.hidden = false;
 }
 function showSetup() {
-  setupSection.hidden = false;
-  appEl.hidden = true;
-  tabsNav.hidden = true;
+  setupPage.hidden = false;
+  shellEl.hidden = true;
 }
 
 async function checkSetup() {
@@ -36,12 +33,14 @@ async function checkSetup() {
     if (data.configured) {
       showApp();
       initChat();
+      navigateTo(location.hash.slice(1) || 'chat');
     } else {
       showSetup();
     }
   } catch {
     showApp();
     initChat();
+    navigateTo(location.hash.slice(1) || 'chat');
   }
 }
 
@@ -63,6 +62,7 @@ setupForm.addEventListener('submit', async (e) => {
     if (data.ok) {
       showApp();
       initChat();
+      navigateTo(location.hash.slice(1) || 'chat');
     } else {
       setupError.textContent = data.error || 'Something went wrong.';
       setupError.hidden = false;
@@ -76,18 +76,20 @@ setupForm.addEventListener('submit', async (e) => {
   }
 });
 
-// --- tabs ---
-document.querySelectorAll('#tabs .tab-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#tabs .tab-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.tab-panel').forEach((p) => (p.hidden = true));
-    const panel = document.getElementById(`tab-${btn.dataset.tab}`);
-    panel.hidden = false;
-    if (btn.dataset.tab === 'dashboard') loadDashboard();
-    if (btn.dataset.tab === 'whatsapp') loadWhatsApp();
-  });
-});
+// ============================== ROUTER ==============================
+
+const PAGES = ['chat', 'practice', 'dashboard', 'whatsapp'];
+
+function navigateTo(page) {
+  if (!PAGES.includes(page)) page = 'chat';
+  document.querySelectorAll('.nav-link').forEach((l) => l.classList.toggle('active', l.dataset.page === page));
+  document.querySelectorAll('.page').forEach((p) => p.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'whatsapp') loadWhatsApp();
+}
+
+window.addEventListener('hashchange', () => navigateTo(location.hash.slice(1)));
 
 // ============================== CHAT ==============================
 
@@ -96,6 +98,22 @@ const form = document.getElementById('composer');
 const input = document.getElementById('input');
 const chatListEl = document.getElementById('chat-list');
 const newChatBtn = document.getElementById('new-chat-btn');
+const chatSidebar = document.getElementById('chat-sidebar');
+const chatDrawerToggle = document.getElementById('chat-drawer-toggle');
+const chatDrawerBackdrop = document.getElementById('chat-drawer-backdrop');
+
+function openDrawer() {
+  chatSidebar.classList.add('open');
+  chatDrawerBackdrop.classList.add('open');
+}
+function closeDrawer() {
+  chatSidebar.classList.remove('open');
+  chatDrawerBackdrop.classList.remove('open');
+}
+chatDrawerToggle.addEventListener('click', () => {
+  chatSidebar.classList.contains('open') ? closeDrawer() : openDrawer();
+});
+chatDrawerBackdrop.addEventListener('click', closeDrawer);
 
 function addMessage(text, role) {
   const div = document.createElement('div');
@@ -114,7 +132,10 @@ async function refreshChatList() {
     const item = document.createElement('div');
     item.className = 'chat-list-item' + (c.id === currentChatId ? ' active' : '');
     item.textContent = c.title;
-    item.addEventListener('click', () => switchChat(c.id));
+    item.addEventListener('click', () => {
+      switchChat(c.id);
+      closeDrawer();
+    });
     chatListEl.appendChild(item);
   }
   return chats;
@@ -138,6 +159,7 @@ newChatBtn.addEventListener('click', async () => {
   });
   const { id } = await res.json();
   await switchChat(id);
+  closeDrawer();
 });
 
 async function initChat() {
@@ -156,6 +178,7 @@ form.addEventListener('submit', async (e) => {
   const message = input.value.trim();
   if (!message || !currentChatId) return;
   input.value = '';
+  autoGrow();
   addMessage(message, 'user');
 
   const status = addMessage('…thinking', 'status');
@@ -191,6 +214,11 @@ input.addEventListener('keydown', (e) => {
     form.requestSubmit();
   }
 });
+function autoGrow() {
+  input.style.height = 'auto';
+  input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+}
+input.addEventListener('input', autoGrow);
 
 // ============================== PRACTICE ==============================
 
@@ -218,7 +246,8 @@ async function startPracticeChallenge() {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    document.getElementById('practice-title').textContent = `${data.challenge.title} (${data.challenge.language})`;
+    document.getElementById('practice-lang-badge').textContent = data.challenge.language;
+    document.getElementById('practice-title').textContent = data.challenge.title;
     document.getElementById('practice-prompt').textContent = data.challenge.prompt;
     document.getElementById('practice-code').value = data.challenge.starterCode || '';
     practiceShow('active');
@@ -316,14 +345,17 @@ async function loadDashboard() {
 // ============================== WHATSAPP ==============================
 
 const waStatusEl = document.getElementById('wa-status');
+const waStatusDot = document.getElementById('wa-status-dot');
 const waPairing = document.getElementById('wa-pairing');
 const waConnected = document.getElementById('wa-connected');
+const waModeCard = document.getElementById('wa-mode-card');
+const waGroupsCard = document.getElementById('wa-groups-card');
 const waQrPanel = document.getElementById('wa-qr-panel');
 const waCodePanel = document.getElementById('wa-code-panel');
 
-document.querySelectorAll('#wa-pair-tabs .tab-btn').forEach((btn) => {
+document.querySelectorAll('#wa-pair-tabs .segmented-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('#wa-pair-tabs .tab-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('#wa-pair-tabs .segmented-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     waQrPanel.hidden = btn.dataset.method !== 'qr';
     waCodePanel.hidden = btn.dataset.method !== 'pairing';
@@ -406,35 +438,48 @@ async function renderWhatsAppStatus() {
   const status = await res.json();
 
   if (status.state === 'connected') {
-    waStatusEl.textContent = '🟢 Connected';
+    waStatusDot.className = 'status-dot live';
+    waStatusEl.textContent = 'Connected';
     waPairing.hidden = true;
     waConnected.hidden = false;
+    waModeCard.hidden = false;
+    waGroupsCard.hidden = false;
     document.getElementById('wa-phone-display').textContent = status.phoneNumber || '(unknown)';
     renderWhatsAppSettings();
     clearInterval(waPollTimer);
+    waPollTimer = null;
     return;
   }
 
   waConnected.hidden = true;
+  waModeCard.hidden = true;
+  waGroupsCard.hidden = true;
   waPairing.hidden = false;
 
   if (status.state === 'qr_pending' && status.qrDataUrl) {
+    waStatusDot.className = 'status-dot';
     waStatusEl.textContent = 'Scan the QR code below.';
     document.getElementById('wa-qr-img').src = status.qrDataUrl;
   } else if (status.state === 'pairing_code_pending' && status.pairingCode) {
+    waStatusDot.className = 'status-dot';
     waStatusEl.textContent = 'Enter this code in WhatsApp.';
     document.getElementById('wa-pairing-code').textContent = status.pairingCode;
   } else if (status.state === 'connecting') {
+    waStatusDot.className = 'status-dot';
     waStatusEl.textContent = 'Connecting…';
+  } else if (status.lastError) {
+    waStatusDot.className = 'status-dot error';
+    waStatusEl.textContent = status.lastError;
   } else {
-    waStatusEl.textContent = status.lastError ? `⚠️ ${status.lastError}` : 'Not connected. Pick a pairing method below.';
+    waStatusDot.className = 'status-dot';
+    waStatusEl.textContent = 'Not connected. Pick a pairing method below.';
   }
 
   if (!waPollTimer) waPollTimer = setInterval(renderWhatsAppStatus, 2500);
 }
 
 async function loadWhatsApp() {
-  const activeTab = document.querySelector('#wa-pair-tabs .tab-btn.active')?.dataset.method || 'qr';
+  const activeTab = document.querySelector('#wa-pair-tabs .segmented-btn.active')?.dataset.method || 'qr';
   await renderWhatsAppStatus();
   const res = await fetch('/api/whatsapp/status');
   const status = await res.json();

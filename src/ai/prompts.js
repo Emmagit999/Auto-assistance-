@@ -40,7 +40,10 @@ JSON object, no prose, no markdown fences:
 "language" must be one of: python, javascript, bash, c, cpp, java, go, rust, ruby, php — pick one they've actually
 used. "prompt" is 2-4 sentences describing a small, self-contained task (something checkable by running the code
 and reading stdout), pitched at roughly their demonstrated skill level, not a trivial "print hello world" unless
-they're clearly a beginner. "starter_code" is a few lines of scaffolding (may be empty string) — not the solution.`;
+they're clearly a beginner. The program must run to completion with zero input: never read from stdin (no
+input(), no scanf/Scanner/gets, no command-line args) — hardcode or generate any test values inside the code
+itself, since the runner supplies no stdin and a correct solution would otherwise fail with an unrelated error.
+"starter_code" is a few lines of scaffolding (may be empty string) — not the solution.`;
 
 export function practiceChallengeUserPrompt({ languageCounts, recentSnippets }) {
   return `Languages they've run before (language: count): ${JSON.stringify(languageCounts)}\n\nA few of their recent snippets:\n${recentSnippets}\n\nDesign one exercise:`;

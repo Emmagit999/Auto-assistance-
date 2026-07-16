@@ -2,138 +2,196 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Androg — Termux Code Assistant</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<header>
-  <h1>Androg</h1>
-  <nav id="tabs" hidden>
-    <button data-tab="chat" class="tab-btn active">Chat</button>
-    <button data-tab="practice" class="tab-btn">Practice</button>
-    <button data-tab="dashboard" class="tab-btn">Dashboard</button>
-    <button data-tab="whatsapp" class="tab-btn">WhatsApp</button>
-  </nav>
-</header>
 
-<section id="setup" hidden>
-  <h2>One-time setup</h2>
-  <p>
-    Androg needs a free OpenRouter API key to power its AI features (chat, code detection,
-    explanations). Get one at
-    <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>
-    — no card required for free models.
-  </p>
-  <form id="setup-form">
-    <input id="setup-key" type="password" placeholder="sk-or-v1-…" autocomplete="off" />
-    <button type="submit">Save key</button>
-  </form>
-  <p id="setup-error" class="error" hidden></p>
+<section id="setup-page">
+  <div class="setup-card">
+    <div class="brand-mark">⚡</div>
+    <h1>Welcome to Androg</h1>
+    <p class="muted">
+      One free key and you're set. Grab one at
+      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>
+      — no card required.
+    </p>
+    <form id="setup-form">
+      <input id="setup-key" type="password" placeholder="sk-or-v1-…" autocomplete="off" />
+      <button type="submit">Save key</button>
+    </form>
+    <p id="setup-error" class="error" hidden></p>
+  </div>
 </section>
 
-<div id="app" hidden>
+<div id="shell" hidden>
 
-  <div id="tab-chat" class="tab-panel">
-    <aside id="chat-sidebar">
-      <button id="new-chat-btn">+ New chat</button>
-      <div id="chat-list"></div>
-    </aside>
-    <div id="chat-main">
-      <main id="chat"></main>
-      <form id="composer">
-        <textarea id="input" placeholder="Type a message or paste code (``` fences optional)…" rows="3"></textarea>
-        <button type="submit">Send</button>
-      </form>
+  <nav id="app-nav">
+    <div class="brand">
+      <span class="brand-mark">⚡</span>
+      <span class="brand-name">Androg</span>
     </div>
-  </div>
-
-  <div id="tab-practice" class="tab-panel" hidden>
-    <div class="panel-inner">
-      <div id="practice-idle">
-        <h2>Practice mode</h2>
-        <p class="muted">I'll write you a live coding challenge based on what you've actually run before, you write the code, I grade it.</p>
-        <button id="practice-start-btn">Start a challenge</button>
-      </div>
-      <div id="practice-active" hidden>
-        <h3 id="practice-title"></h3>
-        <p id="practice-prompt" class="muted"></p>
-        <textarea id="practice-code" rows="10" spellcheck="false"></textarea>
-        <button id="practice-submit-btn">Run &amp; grade</button>
-      </div>
-      <div id="practice-result" hidden>
-        <pre id="practice-output" class="output-block"></pre>
-        <p id="practice-feedback"></p>
-        <button id="practice-again-btn">New challenge</button>
-      </div>
+    <div class="nav-links">
+      <a href="#chat" class="nav-link" data-page="chat"><span class="nav-icon">💬</span><span class="nav-label">Chat</span></a>
+      <a href="#practice" class="nav-link" data-page="practice"><span class="nav-icon">🧠</span><span class="nav-label">Practice</span></a>
+      <a href="#dashboard" class="nav-link" data-page="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+      <a href="#whatsapp" class="nav-link" data-page="whatsapp"><span class="nav-icon">🟢</span><span class="nav-label">WhatsApp</span></a>
     </div>
-  </div>
+  </nav>
 
-  <div id="tab-dashboard" class="tab-panel" hidden>
-    <div class="panel-inner">
-      <h2>Dashboard</h2>
-      <div id="dashboard-tiles" class="tiles"></div>
-      <div class="chart-block">
-        <h3>Languages run</h3>
-        <div id="lang-chart" class="bar-chart"></div>
-      </div>
-      <div class="chart-block">
-        <h3>Activity, last 14 days</h3>
-        <div id="activity-chart" class="bar-chart"></div>
-      </div>
-    </div>
-  </div>
+  <main id="pages">
 
-  <div id="tab-whatsapp" class="tab-panel" hidden>
-    <div class="panel-inner">
-      <h2>WhatsApp</h2>
-      <div id="wa-status" class="muted"></div>
-
-      <div id="wa-pairing">
-        <div id="wa-pair-tabs">
-          <button data-method="qr" class="tab-btn active">Scan QR</button>
-          <button data-method="pairing" class="tab-btn">Enter phone number</button>
-        </div>
-        <div id="wa-qr-panel">
-          <p class="muted">Open WhatsApp → Linked Devices → Link a device, then scan:</p>
-          <img id="wa-qr-img" alt="WhatsApp QR code" />
-        </div>
-        <div id="wa-code-panel" hidden>
-          <p class="muted">Country code + number, digits only (e.g. 15551234567):</p>
-          <div class="row">
-            <input id="wa-phone" placeholder="15551234567" autocomplete="off" />
-            <button id="wa-request-code-btn">Get code</button>
+    <!-- ============ CHAT ============ -->
+    <section id="page-chat" class="page">
+      <div id="chat-drawer-backdrop"></div>
+      <aside id="chat-sidebar">
+        <button id="new-chat-btn">+ New chat</button>
+        <div id="chat-list"></div>
+      </aside>
+      <div class="chat-area">
+        <header class="page-header">
+          <button id="chat-drawer-toggle" class="icon-btn" aria-label="Chats">☰</button>
+          <div>
+            <h1>Chat</h1>
+            <p class="muted">Paste code or just talk — I'll handle the rest.</p>
           </div>
-          <p id="wa-pairing-code" class="pairing-code"></p>
-          <p class="muted">Enter this in WhatsApp → Linked Devices → Link with phone number instead.</p>
+        </header>
+        <main id="chat"></main>
+        <form id="composer">
+          <textarea id="input" placeholder="Message or paste code…" rows="1"></textarea>
+          <button type="submit" class="send-btn" aria-label="Send">➤</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ PRACTICE ============ -->
+    <section id="page-practice" class="page">
+      <header class="page-header">
+        <div>
+          <h1>Practice</h1>
+          <p class="muted">A live challenge built from what you've actually run before.</p>
+        </div>
+      </header>
+      <div class="page-body">
+        <div class="card center-card" id="practice-idle">
+          <div class="card-icon">🧠</div>
+          <h2>Ready when you are</h2>
+          <p class="muted">I'll look at your recent snippets and write you something worth solving.</p>
+          <button id="practice-start-btn">Start a challenge</button>
+        </div>
+
+        <div class="card" id="practice-active" hidden>
+          <span class="badge" id="practice-lang-badge"></span>
+          <h2 id="practice-title"></h2>
+          <p id="practice-prompt" class="muted"></p>
+          <textarea id="practice-code" rows="10" spellcheck="false"></textarea>
+          <button id="practice-submit-btn">Run &amp; grade</button>
+        </div>
+
+        <div class="card" id="practice-result" hidden>
+          <pre id="practice-output" class="output-block"></pre>
+          <div class="feedback-block">
+            <span class="badge badge-accent">Feedback</span>
+            <p id="practice-feedback"></p>
+          </div>
+          <button id="practice-again-btn">New challenge</button>
         </div>
       </div>
+    </section>
 
-      <div id="wa-connected" hidden>
-        <p>Connected as <strong id="wa-phone-display"></strong></p>
-        <button id="wa-logout-btn">Log out</button>
-
-        <h3>Mode</h3>
-        <label class="radio-row">
-          <input type="radio" name="wa-mode" value="self" />
-          <span><strong>Self</strong> — only replies when you message <em>yourself</em> (Message Yourself). Never talks to your real contacts. (default)</span>
-        </label>
-        <label class="radio-row">
-          <input type="radio" name="wa-mode" value="dedicated" />
-          <span><strong>Dedicated</strong> — this number exists just to be the bot; it replies to anyone who messages it directly.</span>
-        </label>
-
-        <h3>Groups (off by default, strictly opt-in)</h3>
-        <p class="muted">The bot never replies in a group until you add its JID here. If it sees a message in an unlisted group, it logs the JID to the terminal so you can copy it.</p>
-        <div class="row">
-          <input id="wa-group-jid" placeholder="123456789-987654321@g.us" autocomplete="off" />
-          <button id="wa-group-add-btn">Allow</button>
+    <!-- ============ DASHBOARD ============ -->
+    <section id="page-dashboard" class="page">
+      <header class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="muted">How you've actually been using it.</p>
         </div>
-        <ul id="wa-group-list"></ul>
+      </header>
+      <div class="page-body">
+        <div id="dashboard-tiles" class="tiles"></div>
+        <div class="card chart-block">
+          <h3>Languages run</h3>
+          <div id="lang-chart" class="bar-chart"></div>
+        </div>
+        <div class="card chart-block">
+          <h3>Activity, last 14 days</h3>
+          <div id="activity-chart" class="bar-chart"></div>
+        </div>
       </div>
-    </div>
-  </div>
+    </section>
 
+    <!-- ============ WHATSAPP ============ -->
+    <section id="page-whatsapp" class="page">
+      <header class="page-header">
+        <div>
+          <h1>WhatsApp</h1>
+          <p class="muted">Link a number, choose how strict it should be.</p>
+        </div>
+      </header>
+      <div class="page-body">
+
+        <div class="card status-card">
+          <span class="status-dot" id="wa-status-dot"></span>
+          <span id="wa-status" class="muted">Checking…</span>
+        </div>
+
+        <div class="card" id="wa-pairing">
+          <div class="segmented" id="wa-pair-tabs">
+            <button data-method="qr" class="segmented-btn active">Scan QR</button>
+            <button data-method="pairing" class="segmented-btn">Phone number</button>
+          </div>
+          <div id="wa-qr-panel">
+            <p class="muted">WhatsApp → Linked Devices → Link a device, then scan:</p>
+            <div class="qr-frame"><img id="wa-qr-img" alt="WhatsApp QR code" /></div>
+          </div>
+          <div id="wa-code-panel" hidden>
+            <p class="muted">Country code + number, digits only:</p>
+            <div class="row">
+              <input id="wa-phone" placeholder="15551234567" autocomplete="off" />
+              <button id="wa-request-code-btn">Get code</button>
+            </div>
+            <p id="wa-pairing-code" class="pairing-code"></p>
+            <p class="muted">Enter it under WhatsApp → Linked Devices → Link with phone number.</p>
+          </div>
+        </div>
+
+        <div class="card" id="wa-connected" hidden>
+          <div class="connected-row">
+            <div>
+              <div class="muted">Connected as</div>
+              <div class="phone-display" id="wa-phone-display"></div>
+            </div>
+            <button id="wa-logout-btn" class="ghost-btn">Log out</button>
+          </div>
+        </div>
+
+        <div class="card" id="wa-mode-card" hidden>
+          <h3>Mode</h3>
+          <label class="radio-row">
+            <input type="radio" name="wa-mode" value="self" />
+            <span><strong>Self</strong> — only replies when you message <em>yourself</em>. Never talks to your real contacts. <span class="badge">default</span></span>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="wa-mode" value="dedicated" />
+            <span><strong>Dedicated</strong> — this number exists just to be the bot; replies to anyone who messages it.</span>
+          </label>
+        </div>
+
+        <div class="card" id="wa-groups-card" hidden>
+          <h3>Groups</h3>
+          <p class="muted">Off by default, strictly opt-in. An unlisted group's JID is logged to the terminal once so you can copy it here.</p>
+          <div class="row">
+            <input id="wa-group-jid" placeholder="123456789-987654321@g.us" autocomplete="off" />
+            <button id="wa-group-add-btn">Allow</button>
+          </div>
+          <ul id="wa-group-list"></ul>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
 </div>
 
 <script src="chat.js"></script>
