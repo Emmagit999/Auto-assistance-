@@ -350,6 +350,7 @@ const waPairing = document.getElementById('wa-pairing');
 const waConnected = document.getElementById('wa-connected');
 const waModeCard = document.getElementById('wa-mode-card');
 const waGroupsCard = document.getElementById('wa-groups-card');
+const waTriggerCard = document.getElementById('wa-trigger-card');
 const waQrPanel = document.getElementById('wa-qr-panel');
 const waCodePanel = document.getElementById('wa-code-panel');
 
@@ -421,6 +422,17 @@ document.querySelectorAll('input[name="wa-mode"]').forEach((radio) => {
   });
 });
 
+document.getElementById('wa-trigger-save-btn').addEventListener('click', async () => {
+  const requireTrigger = document.getElementById('wa-trigger-enabled').checked;
+  const triggerPrefix = document.getElementById('wa-trigger-prefix').value.trim() || '?';
+  await fetch('/api/whatsapp/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requireTrigger, triggerPrefix }),
+  });
+  renderWhatsAppSettings();
+});
+
 document.getElementById('wa-group-add-btn').addEventListener('click', async () => {
   const groupJid = document.getElementById('wa-group-jid').value.trim();
   if (!groupJid) return;
@@ -446,6 +458,8 @@ async function renderWhatsAppSettings() {
   const res = await fetch('/api/whatsapp/settings');
   const settings = await res.json();
   document.querySelectorAll('input[name="wa-mode"]').forEach((r) => (r.checked = r.value === settings.mode));
+  document.getElementById('wa-trigger-enabled').checked = settings.requireTrigger;
+  document.getElementById('wa-trigger-prefix').value = settings.triggerPrefix;
   const list = document.getElementById('wa-group-list');
   list.innerHTML = '';
   for (const jid of settings.allowedGroups) {
@@ -475,6 +489,7 @@ function applyWhatsAppStatus(status) {
     waConnected.hidden = false;
     waModeCard.hidden = false;
     waGroupsCard.hidden = false;
+    waTriggerCard.hidden = false;
     waResetBtn.hidden = true;
     document.getElementById('wa-phone-display').textContent = status.phoneNumber || '(unknown)';
     renderWhatsAppSettings();
@@ -486,6 +501,7 @@ function applyWhatsAppStatus(status) {
   waConnected.hidden = true;
   waModeCard.hidden = true;
   waGroupsCard.hidden = true;
+  waTriggerCard.hidden = true;
   waPairing.hidden = false;
   waResetBtn.hidden = false;
   document.getElementById('wa-code-help').hidden = true;

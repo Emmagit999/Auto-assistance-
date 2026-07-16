@@ -179,7 +179,7 @@ class WhatsAppManager extends EventEmitter {
           const jid = msg.key.remoteJid;
           if (!jid) continue;
 
-          const { mode, allowedGroups } = getWhatsAppSettings();
+          const { mode, allowedGroups, requireTrigger, triggerPrefix } = getWhatsAppSettings();
           const isGroup = jid.endsWith('@g.us');
 
           if (isGroup) {
@@ -206,8 +206,18 @@ class WhatsAppManager extends EventEmitter {
             if (msg.key.fromMe) continue;
           }
 
-          const text = extractText(msg);
+          let text = extractText(msg);
           if (!text) continue;
+
+          // Like any normal WhatsApp/Discord-style bot: a message only counts as "for
+          // the bot" if it starts with the trigger prefix, so it doesn't reply to every
+          // single message in whatever thread/group it's otherwise allowed to see.
+          if (requireTrigger) {
+            const trimmed = text.trimStart();
+            if (!trimmed.startsWith(triggerPrefix)) continue;
+            text = trimmed.slice(triggerPrefix.length).trim();
+            if (!text) continue;
+          }
 
           try {
             await sock.sendPresenceUpdate('composing', jid);

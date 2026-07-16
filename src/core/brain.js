@@ -3,7 +3,8 @@ import { getSession, pushHistory, setLastLanguage, saveSnippet, recordMessage, r
 import { isConfigured } from './settings.js';
 import { isRuntimeAvailable } from '../exec/envCheck.js';
 import { ensureRuntime } from '../exec/installer.js';
-import { runCode } from '../exec/runner.js';
+import { runCode, rerun } from '../exec/runner.js';
+import { supportsAutoInstall, detectMissingPackage, installMissingPackage } from '../exec/dependencies.js';
 import { openrouter } from '../ai/openrouter.js';
 import { CHAT_SYSTEM, EXPLAIN_SYSTEM, explainResultUserPrompt } from '../ai/prompts.js';
 import { config } from '../config.js';
@@ -97,7 +98,25 @@ export async function handleMessage(sessionId, rawText, channel = 'web') {
   }
 
   messages.push(`▶️ Running your ${language} code...`);
-  const result = await runCode(sessionId, language, code);
+  let result = await runCode(sessionId, language, code);
+
+  if (supportsAutoInstall(language)) {
+    const alreadyInstalled = new Set();
+    while (result.exitCode !== 0 && !result.timedOut && alreadyInstalled.size < 3) {
+      const missingPkg = detectMissingPackage(language, result.stderr);
+      if (!missingPkg || alreadyInstalled.has(missingPkg)) break; // nothing left to try, or stuck in a loop
+      messages.push(`📦 Missing package \`${missingPkg}\` — installing it...`);
+      const install = await installMissingPackage(language, missingPkg, result.workDir);
+      alreadyInstalled.add(missingPkg);
+      if (!install.ok) {
+        messages.push(`❌ Couldn't install \`${missingPkg}\`: ${install.error}`);
+        break;
+      }
+      messages.push(`✅ Installed \`${missingPkg}\`, retrying...`);
+      result = await rerun(result.workDir, result.runSpec);
+    }
+  }
+
   recordSnippetRun(language, result.exitCode === 0 && !result.timedOut);
   messages.push(formatOutput(result));
 

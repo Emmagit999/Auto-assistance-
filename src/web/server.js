@@ -5,7 +5,7 @@ import express from 'express';
 import { config } from '../config.js';
 import { handleMessage } from '../core/brain.js';
 import { listSnippets, getSession, createChat, listChats, getStats } from '../core/storage.js';
-import { getApiKey, setApiKey, isConfigured, getWhatsAppSettings, setWhatsAppMode, setGroupAllowed } from '../core/settings.js';
+import { getApiKey, setApiKey, isConfigured, getWhatsAppSettings, setWhatsAppMode, setGroupAllowed, setTriggerSettings } from '../core/settings.js';
 import { openrouter } from '../ai/openrouter.js';
 import { whatsapp } from '../whatsapp/bot.js';
 import { startPractice, submitPractice } from '../core/practice.js';
@@ -114,9 +114,14 @@ export function startWebServer() {
   });
 
   app.post('/api/whatsapp/settings', (req, res) => {
-    const { mode } = req.body || {};
-    if (!['self', 'dedicated'].includes(mode)) return res.status(400).json({ error: 'mode must be "self" or "dedicated"' });
-    setWhatsAppMode(mode);
+    const { mode, requireTrigger, triggerPrefix } = req.body || {};
+    if (mode !== undefined) {
+      if (!['self', 'dedicated'].includes(mode)) return res.status(400).json({ error: 'mode must be "self" or "dedicated"' });
+      setWhatsAppMode(mode);
+    }
+    if (requireTrigger !== undefined || triggerPrefix !== undefined) {
+      setTriggerSettings({ requireTrigger, triggerPrefix });
+    }
     res.json(getWhatsAppSettings());
   });
 

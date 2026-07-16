@@ -28,8 +28,19 @@ Beyond the core loop, the web UI has:
 - **A WhatsApp tab** — connect via QR *or* a phone-number pairing code (WhatsApp → Linked Devices →
   Link with phone number), pick self vs. dedicated mode, and manage the group allowlist.
 
-And the app **updates itself**: every 5 minutes it checks the GitHub repo for new commits, and if
-one's there, pulls, reinstalls dependencies if `package.json` changed, and restarts itself in place.
+And the app **updates itself**: it checks the GitHub repo for new commits immediately on every
+launch and then every minute after, and if one's there, pulls, reinstalls dependencies if
+`package.json` changed, and restarts itself in place.
+
+If Python or JavaScript code fails because a package it imports isn't installed, Androg detects
+that specific error, installs the package (`pip`/`npm`, scoped to that snippet's own isolated
+workspace directory — it never touches Androg's own dependencies), and retries automatically before
+reporting back. Errors that aren't actually about a missing package (a real bug in the code) are
+left alone and explained normally instead of triggering a pointless install attempt.
+
+On WhatsApp, the bot only responds to messages starting with a trigger prefix (`?` by default,
+configurable in the WhatsApp tab, can be turned off) — like any normal chat bot, so it's not
+replying to every single message in whatever chat/group it's otherwise allowed to see.
 
 ## Design notes
 
@@ -44,11 +55,18 @@ one's there, pulls, reinstalls dependencies if `package.json` changed, and resta
   your real contacts. "Dedicated" mode is for a number that exists solely to be the bot. Groups are
   opt-in only, empty allowlist by default; an unlisted group's JID gets logged to the console (once)
   so you can copy it into the allowlist instead of the bot silently guessing consent.
-- **Self-updating.** `src/core/updater.js` polls `git fetch` every 5 minutes; on a new commit it
-  does a fast-forward-only pull (never force, never touches uncommitted local changes), reinstalls
-  npm deps only if `package.json`/`package-lock.json` changed, then respawns itself detached and
-  exits — the new process picks up right where the old one left off (WhatsApp/session state persists
-  on disk). No-ops entirely if it's not running from a git checkout.
+- **Self-updating.** `src/core/updater.js` checks `git fetch` immediately on launch and then every
+  minute; on a new commit it does a fast-forward-only pull (never force, never touches uncommitted
+  local changes), reinstalls npm deps only if `package.json`/`package-lock.json` changed, then
+  respawns itself detached and exits — the new process picks up right where the old one left off
+  (WhatsApp/session state persists on disk). No-ops entirely if it's not running from a git checkout.
+- **Baileys ships with a patch.** `patches/@whiskeysockets+baileys+*.patch` (applied automatically
+  via `patch-package` on every `npm install`, see the `postinstall` script) fixes three real bugs in
+  the installed rc's login/reconnect handshake (`passive: true` on the *reconnect* payload, an
+  invalid `lidDbMigrated` field, and an `await` race on the noise-protocol handshake) that otherwise
+  cause a `401 device_removed` loop shortly after a successful pairing. If a `loggedOut` disconnect
+  does happen anyway, the credentials are auto-cleared so a stale session can't keep failing the
+  same way forever — there's also a manual "Reset connection" button in the WhatsApp tab for it.
 - **Web search via DuckDuckGo HTML scraping** — no API key, but can break if DuckDuckGo changes its
   markup; it's only used as a fallback for languages outside the built-in runtime map.
 - **No API key is ever hardcoded or committed.** The web UI's setup screen is the intended way to
@@ -105,9 +123,11 @@ npm start
 
 ## Supported languages out of the box
 
-Python, JavaScript/Node, Bash, C, C++, Java, Go, Rust, Ruby, PHP — see `LANGUAGES` in
-`src/config.js` to add more (just needs a check command, a Termux package name, and a run/compile
-step).
+32 languages: Python, JavaScript/Node, Bash, C, C++, Java, Go, Rust, Ruby, PHP, Perl, Lua, Swift,
+Kotlin, Scala, Erlang, Elixir, Haskell, Dart, Nim, Zig, Crystal, D, Tcl, Racket, Scheme, Common
+Lisp, Prolog, Groovy, C#, Forth, and Octave — every package name checked against Termux's live apt
+index, not guessed. See `LANGUAGES` in `src/config.js` to add more (needs a PATH-checkable binary
+name, a Termux package name, and a run/compile step).
 
 ## Project layout
 
@@ -122,13 +142,15 @@ src/
   core/settings.js       runtime-writable API key + WhatsApp mode/group settings
   core/practice.js       generates + grades live-coding challenges from session history
   core/updater.js         git-poll auto-updater, self-respawn on new commits
-  exec/envCheck.js      "is this runtime installed?" checks
-  exec/installer.js     safe, argv-array package installs
+  exec/envCheck.js      "is this runtime installed?" checks (plain PATH check, no version flags)
+  exec/installer.js     safe, argv-array runtime installs
   exec/runner.js         compile/run with timeout, isolated per-run workdir
+  exec/dependencies.js    detects + auto-installs a missing pip/npm package, then retries
   search/duckduckgo.js   no-key web search
-  whatsapp/bot.js         Baileys connection manager: QR + pairing code, mode/group gating
+  whatsapp/bot.js         Baileys connection manager: QR + pairing code, mode/group/trigger gating
   web/server.js + public/  chat UI (multi-chat, dashboard, practice, WhatsApp tab), setup screen
 install.sh             one-command Termux/Debian installer (no key handling)
+patches/                patch-package fix for a Baileys reconnect bug (see postinstall script)
 ```
 
 ## Notes / limits

@@ -36,6 +36,8 @@ export function isConfigured() {
   return Boolean(getApiKey());
 }
 
+const DEFAULT_TRIGGER_PREFIX = '?';
+
 /**
  * WhatsApp behavior. Defaults are deliberately strict:
  * - "self" mode: only ever replies when the linked account messages *itself* (the
@@ -43,11 +45,17 @@ export function isConfigured() {
  *   "dedicated" mode if this number is a bot-only number meant to talk to anyone.
  * - allowedGroups: empty by default — the bot never replies in a group until its JID is
  *   explicitly added here.
+ * - requireTrigger: on by default, like a normal WhatsApp/Discord-style bot -- a message
+ *   only counts as "for the bot" if it starts with triggerPrefix (stripped before
+ *   processing), so the bot doesn't respond to every single message in whatever
+ *   thread/group it's allowed to see.
  */
 export function getWhatsAppSettings() {
   return {
     mode: settings.whatsappMode === 'dedicated' ? 'dedicated' : 'self',
     allowedGroups: Array.isArray(settings.allowedGroups) ? settings.allowedGroups : [],
+    requireTrigger: settings.requireTrigger !== false,
+    triggerPrefix: settings.triggerPrefix || DEFAULT_TRIGGER_PREFIX,
   };
 }
 
@@ -61,5 +69,11 @@ export function setGroupAllowed(groupJid, allowed) {
   if (allowed) groups.add(groupJid);
   else groups.delete(groupJid);
   settings.allowedGroups = [...groups];
+  persist();
+}
+
+export function setTriggerSettings({ requireTrigger, triggerPrefix }) {
+  if (typeof requireTrigger === 'boolean') settings.requireTrigger = requireTrigger;
+  if (typeof triggerPrefix === 'string' && triggerPrefix.trim()) settings.triggerPrefix = triggerPrefix.trim();
   persist();
 }

@@ -33,6 +33,18 @@ function javaClassName(code) {
   return m ? m[1] : 'Main';
 }
 
+// Node resolves a plain ".js" file's module system from the NEAREST package.json's
+// "type" field, walking up the directory tree -- since these snippets live under this
+// project's own workspace dir, that would silently inherit *our* package.json's
+// "type": "module" instead of matching whatever the user actually wrote. ".mjs"/".cjs"
+// extensions force the mode outright regardless of any package.json, so we pick whichever
+// matches the snippet's own syntax instead of leaking our project's module type into it.
+function jsExtension(code) {
+  const looksEsm = /^\s*(import|export)\s/m.test(code);
+  const looksCjs = /\brequire\(|\bmodule\.exports\b|\bexports\./.test(code);
+  return looksEsm && !looksCjs ? 'mjs' : 'cjs';
+}
+
 /**
  * Compile (if needed) and run a code snippet for the given language, in an isolated
  * per-session workspace directory. Returns { stdout, stderr, exitCode, timedOut, phase }
@@ -65,11 +77,21 @@ export async function runCode(sessionId, language, code) {
     if (compile.code !== 0) return { ...compile, exitCode: compile.code, phase: 'compile' };
     runSpec = def.run(outFile);
   } else {
-    file = path.join(dir, `snippet.${def.ext}`);
+    const ext = language === 'javascript' ? jsExtension(code) : def.ext;
+    file = path.join(dir, `snippet.${ext}`);
     fs.writeFileSync(file, code);
     runSpec = def.run(file);
   }
 
   const result = await runCommand(runSpec.cmd, runSpec.args, { cwd: dir, timeoutMs });
-  return { ...result, exitCode: result.code, phase: 'run' };
+  return { ...result, exitCode: result.code, phase: 'run', workDir: dir, runSpec };
+}
+
+/** Re-executes the same runSpec in the same working directory as a prior runCode() call
+ * (rather than a fresh directory) -- used after auto-installing a missing package, so a
+ * package manager that installs locally into the cwd (npm) actually gets picked up on
+ * the retry instead of landing in a directory that's about to be thrown away. */
+export async function rerun(workDir, runSpec) {
+  const result = await runCommand(runSpec.cmd, runSpec.args, { cwd: workDir, timeoutMs: config.execTimeoutMs });
+  return { ...result, exitCode: result.code, phase: 'run', workDir, runSpec };
 }

@@ -186,6 +186,20 @@
           </label>
         </div>
 
+        <div class="card" id="wa-trigger-card" hidden>
+          <h3>Trigger word</h3>
+          <p class="muted">Like a normal chat bot: only messages starting with this get a reply — everything else (even in an allowed chat) is ignored, so it's not replying to everything.</p>
+          <label class="radio-row">
+            <input type="checkbox" id="wa-trigger-enabled" />
+            <span>Require a trigger prefix <span class="badge">default on</span></span>
+          </label>
+          <div class="row">
+            <input id="wa-trigger-prefix" placeholder="?" maxlength="5" autocomplete="off" />
+            <button id="wa-trigger-save-btn">Save</button>
+          </div>
+          <p class="muted">Example: with <code>?</code>, start your message with <code>?</code> then paste the code — everything after the <code>?</code> is what gets processed.</p>
+        </div>
+
         <div class="card" id="wa-groups-card" hidden>
           <h3>Groups</h3>
           <p class="muted">Off by default, strictly opt-in. An unlisted group's JID is logged to the terminal once so you can copy it here.</p>

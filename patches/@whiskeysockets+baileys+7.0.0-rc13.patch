@@ -1,0 +1,32 @@
+diff --git a/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js b/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js
+index 6357f9e..6f2d42c 100644
+--- a/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js
++++ b/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js
+@@ -329,7 +329,7 @@ export const makeSocket = (config) => {
+                 payload: payloadEnc
+             }
+         }).finish());
+-        await noise.finishInit();
++        noise.finishInit();
+         startKeepAliveRequest();
+     };
+     const getAvailablePreKeysOnServer = async () => {
+diff --git a/node_modules/@whiskeysockets/baileys/lib/Utils/validate-connection.js b/node_modules/@whiskeysockets/baileys/lib/Utils/validate-connection.js
+index f26782b..8258565 100644
+--- a/node_modules/@whiskeysockets/baileys/lib/Utils/validate-connection.js
++++ b/node_modules/@whiskeysockets/baileys/lib/Utils/validate-connection.js
+@@ -53,12 +53,10 @@ export const generateLoginNode = (userJid, config) => {
+     const { user, device } = jidDecode(userJid);
+     const payload = {
+         ...getClientPayload(config),
+-        passive: true,
++        passive: false,
+         pull: true,
+         username: +user,
+-        device: device,
+-        // TODO: investigate (hard set as false atm)
+-        lidDbMigrated: false
++        device: device
+     };
+     return proto.ClientPayload.fromObject(payload);
+ };
