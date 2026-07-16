@@ -398,6 +398,19 @@ document.getElementById('wa-logout-btn').addEventListener('click', async () => {
   renderWhatsAppStatus();
 });
 
+// Same endpoint as logout -- it already safely no-ops the socket-close step when
+// nothing's connected, and clearing any stuck/poisoned credentials is exactly what a
+// stuck "can't pair" state needs. Visible whenever not connected, not just when logged in.
+const waResetBtn = document.getElementById('wa-reset-btn');
+waResetBtn.addEventListener('click', async () => {
+  waResetBtn.disabled = true;
+  waResetBtn.textContent = 'Resetting…';
+  await fetch('/api/whatsapp/logout', { method: 'POST' });
+  await renderWhatsAppStatus();
+  waResetBtn.disabled = false;
+  waResetBtn.textContent = 'Reset connection';
+});
+
 document.querySelectorAll('input[name="wa-mode"]').forEach((radio) => {
   radio.addEventListener('change', async () => {
     await fetch('/api/whatsapp/settings', {
@@ -462,6 +475,7 @@ function applyWhatsAppStatus(status) {
     waConnected.hidden = false;
     waModeCard.hidden = false;
     waGroupsCard.hidden = false;
+    waResetBtn.hidden = true;
     document.getElementById('wa-phone-display').textContent = status.phoneNumber || '(unknown)';
     renderWhatsAppSettings();
     clearInterval(waPollTimer);
@@ -473,6 +487,7 @@ function applyWhatsAppStatus(status) {
   waModeCard.hidden = true;
   waGroupsCard.hidden = true;
   waPairing.hidden = false;
+  waResetBtn.hidden = false;
   document.getElementById('wa-code-help').hidden = true;
 
   if (status.state === 'qr_pending' && status.qrDataUrl) {

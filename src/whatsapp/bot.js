@@ -157,7 +157,15 @@ class WhatsAppManager extends EventEmitter {
           const loggedOut = statusCode === DisconnectReason.loggedOut;
           this.setState('disconnected', { phoneNumber: null });
           console.log(`WhatsApp connection closed (code ${statusCode}).${loggedOut ? ' Logged out — link again from the web UI.' : ' Reconnecting...'}`);
-          if (!loggedOut) setTimeout(() => this.start({ method: 'auto' }), 2000);
+          if (loggedOut) {
+            // These credentials are now permanently invalid to WhatsApp's servers --
+            // reusing them on a future attempt just reproduces the exact same 401
+            // rejection forever. Clear them so the next pairing attempt starts clean.
+            fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+            fs.mkdirSync(AUTH_DIR, { recursive: true });
+          } else {
+            setTimeout(() => this.start({ method: 'auto' }), 2000);
+          }
         }
       });
 

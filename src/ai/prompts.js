@@ -18,13 +18,26 @@ import { LANGUAGES } from '../config.js';
 
 const SUPPORTED_LANGUAGES = Object.keys(LANGUAGES).join(', ');
 
-export const CODE_DETECT_SYSTEM = `You classify a chat message as code or not. Reply with ONLY a compact JSON object,
-no prose, no markdown fences, matching this shape exactly:
+export const CODE_DETECT_SYSTEM = `You classify a chat message as code or not, and if it's code, which language it's
+actually written in. Reply with ONLY a compact JSON object, no prose, no markdown fences, matching this shape
+exactly:
 {"is_code": boolean, "language": string|null, "confidence": number}
-"language" must be one of: ${SUPPORTED_LANGUAGES} — pick the closest match even for less common languages (e.g. a
-Common Lisp snippet is "lisp", a Scheme/Guile snippet is "scheme", a C# snippet is "csharp"). Use null only if it's
-genuinely not code, or is code in a language truly outside this list. "confidence" is 0 to 1. If the message is
-clearly casual conversation, is_code must be false.`;
+
+If it's code, "language" must be either:
+(a) one of these exact names, when the code is genuinely written in that language or an alias of it (Common Lisp
+    -> "lisp", Scheme/Guile/Racket-family -> "scheme" or "racket" as appropriate, C# -> "csharp"):
+    ${SUPPORTED_LANGUAGES}
+(b) null, if the code is real but in a DIFFERENT language not on that list.
+
+Getting the language wrong is worse than saying you don't know — a wrong guess gets run through the wrong
+interpreter and fails confusingly, while null is handled gracefully. Do NOT pick the nearest-sounding or
+syntactically-similar name from the list just to give an answer. Examples of real code that must get language:null
+because they are NOT on the list, no matter how tempting a superficial match looks: OCaml, F#, R, Julia, MATLAB
+(proper, as opposed to Octave), COBOL, Pascal/Delphi, Visual Basic, assembly/ASM, Objective-C, Fortran, Ada. If
+you're not confident it's genuinely one of the listed languages, use null.
+
+"confidence" is 0 to 1. If the message is clearly casual conversation, is_code must be false and language must be
+null.`;
 
 export const INSTALL_PKG_SYSTEM = `You help pick the correct Termux (pkg/apt) package name to install a language
 runtime, given some web search result snippets. Reply with ONLY the single package name token — no sentence, no

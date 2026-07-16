@@ -58,6 +58,31 @@ const CODE_SIGNALS = [
   /\(define\s|\(display\s|\(defun\s/,
 ];
 
+// Free/rotating models sometimes classify real code confidently but WRONGLY into one of
+// our supported languages, because some genuinely unsupported languages share surface
+// syntax with a supported one (OCaml/F#'s `let x = ... in` reads a lot like JS/Kotlin's
+// `let`/`val`). Confidence scores don't help here -- a wrong guess can still come back at
+// 0.95. Instead, check for syntax that's essentially never valid in any of our 32
+// supported languages but is a strong tell for a specific unsupported one; if code
+// clearly belongs to one of these, no AI opinion should be able to override that.
+const UNSUPPORTED_LANGUAGE_SIGNALS = [
+  // OCaml / F# (ML-family)
+  /\bmatch\s+.+\s+with\b/,
+  /\bSome\s*\(|\bNone\b.*->/,
+  /\bfor\s+\w+\s*=\s*\d+\s+to\s+\d+\s+do\b/,
+  /\blet\s+\(\)\s*=/,
+  /^\s*\|\s*.+->/m,
+  // COBOL
+  /\bIDENTIFICATION DIVISION\b|\bPROCEDURE DIVISION\b/i,
+  // Pascal / Delphi
+  /\bprogram\s+\w+\s*;/i,
+  /\bbegin\b[\s\S]*\bend\.\s*$/i,
+];
+
+function looksLikeUnsupportedLanguage(code) {
+  return UNSUPPORTED_LANGUAGE_SIGNALS.filter((re) => re.test(code)).length >= 2;
+}
+
 function guessLanguage(code) {
   for (const [lang, re] of LANGUAGE_HINTS) {
     if (re.test(code)) return lang;
@@ -69,6 +94,13 @@ function heuristicScore(text) {
   return CODE_SIGNALS.reduce((score, re) => score + (re.test(text) ? 1 : 0), 0);
 }
 
+// Final gate applied no matter which path produced a language guess -- a supported-
+// language answer never survives if the code itself carries strong unsupported-language
+// tells (see looksLikeUnsupportedLanguage above).
+function gateLanguage(language, code) {
+  return language && looksLikeUnsupportedLanguage(code) ? null : language;
+}
+
 /**
  * Detect whether a chat message contains code and, if so, extract it + its language.
  * Returns { isCode, language, code, confidence, source }.
@@ -78,7 +110,7 @@ export async function detectCode(message) {
   if (fenced) {
     const code = fenced[2].trim();
     const tagLanguage = resolveLanguage(fenced[1]);
-    const language = tagLanguage || guessLanguage(code) || (await aiDetectLanguage(code));
+    const language = gateLanguage(tagLanguage || guessLanguage(code) || (await aiDetectLanguage(code)), code);
     return { isCode: true, language, code, confidence: 0.95, source: 'fence' };
   }
 
@@ -93,9 +125,10 @@ export async function detectCode(message) {
       { role: 'user', content: codeDetectUserPrompt(message) },
     ]);
     if (json.is_code) {
+      const language = gateLanguage(resolveLanguage(json.language) || guessLanguage(message), message);
       return {
         isCode: true,
-        language: resolveLanguage(json.language) || guessLanguage(message),
+        language,
         code: message.trim(),
         confidence: typeof json.confidence === 'number' ? json.confidence : 0.6,
         source: 'ai',
@@ -104,7 +137,7 @@ export async function detectCode(message) {
     return { isCode: false, language: null, code: null, confidence: json.confidence ?? 0.6, source: 'ai' };
   } catch {
     // AI unavailable: fall back to the heuristic-only guess rather than blocking the reply.
-    const language = guessLanguage(message);
+    const language = gateLanguage(guessLanguage(message), message);
     return { isCode: Boolean(language), language, code: language ? message.trim() : null, confidence: 0.4, source: 'heuristic-fallback' };
   }
 }

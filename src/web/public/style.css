@@ -397,6 +397,8 @@ input:focus, textarea:focus {
 /* ============ whatsapp page ============ */
 
 .status-card { display: flex; align-items: center; gap: 10px; padding: 14px 18px; }
+.status-card #wa-status { flex: 1; }
+.status-card .ghost-btn { height: 30px; padding: 0 12px; font-size: 0.8rem; flex-shrink: 0; }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .status-dot.live { background: var(--good); box-shadow: 0 0 0 4px rgba(53, 196, 112, 0.18); }
 .status-dot.error { background: var(--bad); }
