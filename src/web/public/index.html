@@ -259,6 +259,21 @@
         </div>
 
         <div class="card">
+          <span class="badge">Known issue</span>
+          <h2>"Check the code / number" even though it's right</h2>
+          <p class="muted">
+            If your phone mentions <strong>"passkey"</strong> anywhere (e.g. "you may need to scan
+            another QR code to use your passkey"), this isn't an Androg bug — WhatsApp rolled out a
+            new verification step after linking that requires a real biometric/hardware passkey
+            ceremony, which no unofficial client (Baileys, whatsapp-web.js, etc.) can complete. It's
+            an open, actively-discussed issue upstream, not something fixable from here. Options:
+            keep retrying occasionally (it may not affect every account, and a fix may land
+            upstream), try a different WhatsApp number, or use WhatsApp's official Cloud API instead
+            of this unofficial connection (a bigger setup, but immune to this).
+          </p>
+        </div>
+
+        <div class="card">
           <span class="badge">Good to know</span>
           <h2>Self vs. dedicated mode</h2>
           <p class="muted">
